@@ -9,6 +9,9 @@ from transformers import (
 from datasets import load_dataset
 from peft import LoraConfig, get_peft_model, TaskType
 
+# 设置代理
+os.environ["http_proxy"] = "http://127.0.0.1:7897"
+os.environ["https_proxy"] = "http://127.0.0.1:7897"
 
 def main():
     # 1. 准备基础模型和 tokenizer
