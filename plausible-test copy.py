@@ -17,6 +17,7 @@ if not os.path.isdir(output_dir):
 
 from transformers import (
     AutoTokenizer,
+    AutoModelForSequenceClassification,
     AutoModelForCausalLM,
     Trainer,
     TrainingArguments,
@@ -30,9 +31,8 @@ os.environ["https_proxy"] = "http://127.0.0.1:7897"
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    #EleutherAI/gpt-neo-1.3B
-    #distilroberta-base
     parser.add_argument("--base_model_name", default="distilroberta-base")
+    parser.add_argument("--num_labels", type=int, default=2)
     parser.add_argument("--lora_r", type=int, default=8)
     parser.add_argument("--lora_alpha", type=int, default=32)
     parser.add_argument("--lora_dropout", type=float, default=0.1)
@@ -40,20 +40,34 @@ def parse_args():
     parser.add_argument("--val_samples", type=int, default=50)
     parser.add_argument("--batch_size", type=int, default=8)
     parser.add_argument("--num_train_epochs", type=int, default=1)
+    #seq_cls : 序列分类任务，如 SST-2 
+    #causal_lm : 语言模型任务，如 WikiText-2
+    parser.add_argument("--model_task", choices=["seq_cls", "causal_lm"], default="causal_lm")
     return parser.parse_args()
 
-def load_and_preprocess_dataset(tokenizer, train_samples, val_samples):
-    dataset = load_dataset("wikitext", "wikitext-2-raw-v1")
-    small_train = dataset["train"].select(range(train_samples))
-    small_val = dataset["validation"].select(range(val_samples))
-    def preprocess(examples):
-        tokenized = tokenizer(examples["text"], truncation=True, padding="max_length", max_length=128)
-        tokenized["labels"] = tokenized["input_ids"].copy()
-        return tokenized
-    small_train = small_train.map(preprocess, batched=True)
-    small_val = small_val.map(preprocess, batched=True)
-    small_train.set_format(type="torch", columns=["input_ids", "attention_mask", "labels"])
-    small_val.set_format(type="torch", columns=["input_ids", "attention_mask", "labels"])
+def load_and_preprocess_dataset(task, tokenizer, train_samples, val_samples):
+    if (task == "seq_cls"):
+        dataset = load_dataset("glue", "sst2")
+        small_train = dataset["train"].select(range(train_samples))
+        small_val = dataset["validation"].select(range(val_samples))
+        def preprocess(examples):
+            return tokenizer(examples["sentence"], truncation=True, padding="max_length", max_length=128)
+        small_train = small_train.map(preprocess, batched=True)
+        small_val = small_val.map(preprocess, batched=True)
+        small_train.set_format(type="torch", columns=["input_ids", "attention_mask", "label"])
+        small_val.set_format(type="torch", columns=["input_ids", "attention_mask", "label"])
+    else:
+        dataset = load_dataset("wikitext", "wikitext-2-raw-v1")
+        small_train = dataset["train"].select(range(train_samples))
+        small_val = dataset["validation"].select(range(val_samples))
+        def preprocess(examples):
+            tokenized = tokenizer(examples["text"], truncation=True, padding="max_length", max_length=128)
+            tokenized["labels"] = tokenized["input_ids"].copy()
+            return tokenized
+        small_train = small_train.map(preprocess, batched=True)
+        small_val = small_val.map(preprocess, batched=True)
+        small_train.set_format(type="torch", columns=["input_ids", "attention_mask", "labels"])
+        small_val.set_format(type="torch", columns=["input_ids", "attention_mask", "labels"])
     return small_train, small_val
 
 def main():
@@ -62,19 +76,31 @@ def main():
     base_model_name = args.base_model_name
     tokenizer = AutoTokenizer.from_pretrained(base_model_name, use_fast=False)
 
-    model = AutoModelForCausalLM.from_pretrained(args.base_model_name)
-    peft_config = LoraConfig(
-        task_type=TaskType.CAUSAL_LM,
-        r=args.lora_r,
-        lora_alpha=args.lora_alpha,
-        lora_dropout=args.lora_dropout
-    )
+    if args.model_task == "seq_cls":
+        model = AutoModelForSequenceClassification.from_pretrained(
+            args.base_model_name,
+            num_labels=args.num_labels  # SST-2 是二分类
+        )
+        peft_config = LoraConfig(
+            task_type=TaskType.SEQ_CLS,  # 使用正确的任务类型
+            r=args.lora_r,             # LoRA rank
+            lora_alpha=args.lora_alpha,
+            lora_dropout=args.lora_dropout
+        )
+    else:
+        model = AutoModelForCausalLM.from_pretrained(args.base_model_name)
+        peft_config = LoraConfig(
+            task_type=TaskType.CAUSAL_LM,
+            r=args.lora_r,
+            lora_alpha=args.lora_alpha,
+            lora_dropout=args.lora_dropout
+        )
 
     model = get_peft_model(model, peft_config)
     print("LoRA parameters added to the model.")
 
     # 加载和预处理数据集
-    small_train, small_val = load_and_preprocess_dataset(tokenizer, args.train_samples, args.val_samples)
+    small_train, small_val = load_and_preprocess_dataset(args.model_task, tokenizer, args.train_samples, args.val_samples)
 
     # 5. 训练参数设置（CPU 上就很慢，max_steps 或 epoch 就设置得很小）
     training_args = TrainingArguments(
@@ -110,7 +136,7 @@ def main():
     print("Evaluation results:", results)
 
     # 8. 保存模型（LoRA 权重）
-    model.save_pretrained("lora_weights")
+    model.save_pretrained("lora_distilroberta_sst2")
     print("LoRA model saved.")
 
     # 合并 LoRA 权重到基模型中
