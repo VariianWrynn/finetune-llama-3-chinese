@@ -1,7 +1,7 @@
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-model_path = "./merged_model_out"  # 或者你的模型路径
+model_path = "./models/base_model/gpt2-medium"  # 更新后的模型路径
 tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=False)
 model = AutoModelForCausalLM.from_pretrained(model_path)
 model.eval()

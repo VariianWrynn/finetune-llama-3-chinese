@@ -7,7 +7,7 @@ import tensorflow as tf
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 # 确保输出目录存在
-output_dir = "./lora_test_out"
+output_dir = "../../outputs/lora_test_out"
 # 如果已有与 output_dir 同名的文件，先删除
 if os.path.isfile(output_dir):
     os.remove(output_dir)
@@ -37,7 +37,7 @@ def parse_args():
     return parser.parse_args()
 
 def load_and_preprocess_dataset(tokenizer, train_samples, val_samples):
-    dataset = load_dataset("wikitext", "wikitext-2-raw-v1", data_dir="../training/local_dataset")
+    dataset = load_dataset("wikitext", "wikitext-2-raw-v1")
     small_train = dataset["train"].select(range(train_samples))
     small_val = dataset["validation"].select(range(val_samples))
     def preprocess(examples):
@@ -53,7 +53,8 @@ def load_and_preprocess_dataset(tokenizer, train_samples, val_samples):
 def main():
     args = parse_args()
     # 1. 准备基础模型和 tokenizer
-    model_dir = f"../training/local_model_{args.base_model_name.replace('/', '-')}"
+    model_dir = f"./models/base_model/{args.base_model_name.replace('/', '-')}"
+    print(model_dir)
     tokenizer = AutoTokenizer.from_pretrained(model_dir, use_fast=False)
 
     model = AutoModelForCausalLM.from_pretrained(model_dir)
@@ -104,14 +105,14 @@ def main():
     print("Evaluation results:", results)
 
     # 8. 保存模型（LoRA 权重）
-    model.save_pretrained("../inference/lora_weights")
+    model.save_pretrained("../../models/lora_weights")
     print("LoRA model saved.")
 
     # 合并 LoRA 权重到基模型中
     merged_model = model.merge_and_unload()
     
     # 创建新文件夹
-    merged_output_dir = "../inference/merged_model_out"
+    merged_output_dir = "./models/merged_model"
     if not os.path.isdir(merged_output_dir):
         os.makedirs(merged_output_dir)
     
