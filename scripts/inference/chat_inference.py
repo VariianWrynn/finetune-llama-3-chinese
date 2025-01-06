@@ -1,32 +1,43 @@
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
+import os
 
-model_path = "./models/base_model/gpt2-medium"  # 更新后的模型路径
-tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=False)
-model = AutoModelForCausalLM.from_pretrained(model_path)
-model.eval()
+# 获取当前文件的目录，并构造模型路径
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+model_path = os.path.join(project_root, "models/base_model/gpt2-medium")
 
-while True:
-    user_input = input("User: ")
-    if user_input.strip().lower() in ["exit", "quit"]:
-        print("Bye!")
-        break
-    
-    # 将用户输入转成模型可理解的张量
-    inputs = tokenizer(user_input, return_tensors="pt")
-    
-    # 在CPU上推理（如果有GPU，请改成 to("cuda") 并把模型放到 model.to("cuda")）
+def generate_chat_response(messages, model_path="./models/base_model/gpt2-medium", max_tokens=200, temperature=0.7, top_p=1.0, top_k=0):
+    tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=False)
+    model = AutoModelForCausalLM.from_pretrained(model_path)
+    model.eval()
+
+    conversation_history = "\n".join([f"{msg['role']}: {msg['content']}" for msg in messages])
+    inputs = tokenizer(conversation_history, return_tensors="pt")
+
     with torch.no_grad():
         outputs = model.generate(
             **inputs, 
-            max_new_tokens=100, 
+            max_new_tokens=max_tokens, 
             do_sample=True, 
-            top_k=50, 
-            top_p=0.95, 
-            temperature=0.8,
-            repetition_penalty = 1.5
+            top_k=top_k, 
+            top_p=top_p, 
+            temperature=temperature,
+            repetition_penalty=1.5
         )
-    
-    # 解码成文本
+
     response = tokenizer.decode(outputs[0], skip_special_tokens=True)
-    print("Model:", response)
+    return response
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    input_data = json.loads(sys.argv[1])
+    response = generate_chat_response(
+        messages=input_data.get("messages", []),
+        model_path=input_data.get("model", "./models/base_model/gpt2-medium"),
+        max_tokens=input_data.get("max_tokens", 200),
+        temperature=input_data.get("temperature", 0.7),
+        top_p=input_data.get("top_p", 1.0)
+    )
+    print(json.dumps({"response": response}))
