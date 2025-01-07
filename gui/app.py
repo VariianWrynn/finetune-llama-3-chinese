@@ -1,9 +1,12 @@
 import os
 import sys 
 
-# 确保工作目录为项目根目录
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-os.chdir(project_root)
+# 添加脚本所在目录到 sys.path
+current_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(current_dir)
+
+# 添加项目根目录到 sys.path
+project_root = os.path.abspath(os.path.join(current_dir, ".."))
 sys.path.append(project_root)
 
 from flask import Flask

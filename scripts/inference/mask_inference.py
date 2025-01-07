@@ -7,7 +7,7 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 model_path = os.path.join(project_root, "models/merged_model")
 
 def generate_mask_output(input_data, model_path="./models/merged_model", **kwargs):
-    print(f"####################################\nmodel_path: {model_path}\n####################################")
+    #print(f"####################################\nmodel_path: {model_path}\n####################################")
     tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=False)
     model = AutoModelForMaskedLM.from_pretrained(model_path)
     model.eval()
