@@ -30,8 +30,9 @@ mask_model = AutoModelForMaskedLM.from_pretrained(mask_model_path)
 mask_model.eval()
 
 def generate_chat_response(messages, model_name="gpt2-medium", max_tokens=100, temperature=0.8, top_k=50, top_p=0.95):
-    # 构造对话历史
-    conversation_history = "".join([f"{msg['role'].capitalize()}: {msg['content']}\n" for msg in messages])
+    # 只使用最新的一条消息生成回复
+    latest_message = messages[-1]
+    conversation_history = f"{latest_message['content']}"
     
     # 转换为模型输入
     inputs = chat_tokenizer(conversation_history, return_tensors="pt")

@@ -1,5 +1,11 @@
 import gradio as gr
 import requests
+import os
+import logging
+
+# 静音 TensorFlow 警告
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+logging.getLogger('tensorflow').setLevel(logging.FATAL)
 
 API_URL_CHAT = "http://127.0.0.1:5000/v1/chat/completions"
 API_URL_MASK = "http://127.0.0.1:5000/v1/mask/inference"
@@ -53,6 +59,7 @@ def main():
                     user_input = gr.Textbox(label="Your Message")
 
             def respond(message, chat_history, model, max_tokens, temperature, top_p):
+                print("Generating response...")
                 messages = [{"role": "system", "content": "你是一个有帮助的助手。"}] + \
                            [{"role": "user", "content": m[0]} for m in chat_history] + \
                            [{"role": "assistant", "content": m[1]} for m in chat_history] + \
@@ -77,6 +84,7 @@ def main():
             mask_output = gr.Textbox(label="Mask Output")
 
             def run_mask(model, input_data, param1, param2):
+                print("Generating mask inference output...")
                 params = {
                     "param1": param1,
                     "param2": param2
@@ -93,5 +101,6 @@ def main():
     return demo
 
 if __name__ == "__main__":
+    print("Loading GUI...")
     demo = main()
     demo.launch(server_name="0.0.0.0", server_port=7860)

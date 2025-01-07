@@ -11,7 +11,9 @@ def generate_chat_response(messages, model_path="./models/base_model/gpt2-medium
     model = AutoModelForCausalLM.from_pretrained(model_path)
     model.eval()
 
-    conversation_history = "\n".join([f"{msg['role']}: {msg['content']}" for msg in messages])
+    # 只使用最新的一条消息生成回复
+    latest_message = messages[-1]
+    conversation_history = f"{latest_message['role']}: {latest_message['content']}"
     inputs = tokenizer(conversation_history, return_tensors="pt")
 
     with torch.no_grad():

@@ -1,5 +1,10 @@
 import os
-import sys 
+import sys
+import logging
+
+# 静音 TensorFlow 警告
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+logging.getLogger('tensorflow').setLevel(logging.FATAL)
 
 # 添加脚本所在目录到 sys.path
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -20,4 +25,7 @@ app.register_blueprint(chat_bp, url_prefix='/v1/chat')
 app.register_blueprint(mask_bp, url_prefix='/v1/mask')
 
 if __name__ == "__main__":
+    print("#" * 50)
+    print("Loading GUI...")
+    print("#" * 50)
     app.run(host="0.0.0.0", port=5000, debug=True)
