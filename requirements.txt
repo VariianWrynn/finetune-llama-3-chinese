@@ -6,14 +6,3 @@ transformers
 datasets
 tensorflow
 peft
-
-# 全局变量，加载模型和分词器
-#project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..//.."))
-current_dir = os.path.dirname(os.path.abspath(__file__))
-
-model_path = os.path.join(current_dir, "../models/base_model/gpt2-medium")
-#model_path = os.path.join(project_root, "models/base_model/gpt2-medium")
-
-#把所有正斜杠变成反斜杠
-model_path = model_path.replace("\\", "/")
-print(f"Resolved model path: {model_path}")
